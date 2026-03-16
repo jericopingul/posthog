@@ -122,10 +122,13 @@ def update_team_authentication_cache_on_delete(instance: Team, **kwargs):
 
         from posthog.tasks.team_access_cache_tasks import invalidate_secret_token_cache_task
 
+        def _schedule_invalidation(h: str) -> None:
+            transaction.on_commit(lambda: invalidate_secret_token_cache_task.delay(h))
+
         for token in (instance.secret_api_token, instance.secret_api_token_backup):
             if token:
                 token_hash = hash_key_value(token, mode="sha256")
-                transaction.on_commit(lambda h=token_hash: invalidate_secret_token_cache_task.delay(h))
+                _schedule_invalidation(token_hash)
 
         logger.info("Scheduled invalidation for deleted team tokens", team_id=instance.pk)
     except Exception as e:
