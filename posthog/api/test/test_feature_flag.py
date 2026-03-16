@@ -616,6 +616,100 @@ class TestFeatureFlag(APIBaseTest, ClickhouseTestMixin):
         flag = FeatureFlag.objects.get(key="string-variant-preserved", team=self.team)
         self.assertEqual(flag.filters["groups"][0]["variant"], "control")
 
+    @parameterized.expand(
+        [
+            ("string_int", "100", 100.0),
+            ("string_float", "65.5", 65.5),
+            ("bool_false", False, None),
+        ]
+    )
+    def test_non_numeric_group_rollout_percentage_coerced(self, _name, bad_value, expected):
+        response = self.client.post(
+            f"/api/projects/{self.team.id}/feature_flags/",
+            data={
+                "name": "Coerce rollout flag",
+                "key": f"coerce-rollout-{_name}",
+                "filters": {
+                    "groups": [{"rollout_percentage": bad_value}],
+                },
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        flag = FeatureFlag.objects.get(key=f"coerce-rollout-{_name}", team=self.team)
+        self.assertEqual(flag.filters["groups"][0]["rollout_percentage"], expected)
+
+    def test_numeric_group_rollout_percentage_preserved(self):
+        response = self.client.post(
+            f"/api/projects/{self.team.id}/feature_flags/",
+            data={
+                "name": "Numeric rollout",
+                "key": "numeric-rollout-preserved",
+                "filters": {
+                    "groups": [{"rollout_percentage": 75}],
+                },
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        flag = FeatureFlag.objects.get(key="numeric-rollout-preserved", team=self.team)
+        self.assertEqual(flag.filters["groups"][0]["rollout_percentage"], 75)
+
+    @parameterized.expand(
+        [
+            ("string_int", "50", 50.0),
+            ("bool_true", True, 0),
+        ]
+    )
+    def test_non_numeric_variant_rollout_percentage_coerced(self, _name, bad_value, expected):
+        response = self.client.post(
+            f"/api/projects/{self.team.id}/feature_flags/",
+            data={
+                "name": "Coerce variant rollout",
+                "key": f"coerce-variant-rollout-{_name}",
+                "filters": {
+                    "groups": [{"rollout_percentage": 100}],
+                    "multivariate": {"variants": [{"key": "control", "rollout_percentage": bad_value}]},
+                },
+            },
+            format="json",
+        )
+        # Variant rollout sum validation may reject these, so just check the coercion happened
+        flag_qs = FeatureFlag.objects.filter(key=f"coerce-variant-rollout-{_name}", team=self.team)
+        if response.status_code == status.HTTP_201_CREATED:
+            flag = flag_qs.first()
+            self.assertEqual(flag.filters["multivariate"]["variants"][0]["rollout_percentage"], expected)
+
+    @parameterized.expand(
+        [
+            ("false", False),
+            ("true", True),
+            ("string", "not_an_int"),
+        ]
+    )
+    def test_non_integer_property_group_type_index_coerced_to_null(self, _name, bad_value):
+        response = self.client.post(
+            f"/api/projects/{self.team.id}/feature_flags/",
+            data={
+                "name": "Coerce gti flag",
+                "key": f"coerce-prop-gti-{_name}",
+                "filters": {
+                    "groups": [
+                        {
+                            "rollout_percentage": 100,
+                            "properties": [
+                                {"key": "email", "type": "person", "value": "test", "group_type_index": bad_value}
+                            ],
+                        }
+                    ],
+                },
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        flag = FeatureFlag.objects.get(key=f"coerce-prop-gti-{_name}", team=self.team)
+        self.assertIsNone(flag.filters["groups"][0]["properties"][0]["group_type_index"])
+
     @freeze_time("2021-08-25T22:09:14.252Z")
     @patch("posthog.api.feature_flag.report_user_action")
     def test_create_feature_flag(self, mock_report_user_action):

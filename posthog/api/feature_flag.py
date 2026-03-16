@@ -801,12 +801,44 @@ class FeatureFlagSerializer(
             filters["aggregation_group_type_index"] = None
             aggregation_group_type_index = None
 
-        # Coerce non-string variant values (e.g. boolean false from survey targeting flags) to None.
-        # The Rust flag evaluation service expects variant to be a string or null.
+        # Sanitize group-level fields that must match strict Rust serde types.
+        # Non-conforming values poison the entire team's flag cache and cause 500s.
+        def _coerce_to_numeric(value: Any, default: Any) -> Any:
+            """Coerce a value to a number, returning default for booleans or unconvertible values.
+
+            Note: bool must be rejected before the float() call because both
+            `isinstance(True, int)` and `float(False)` succeed in Python.
+            """
+            if value is None:
+                return value
+            if isinstance(value, bool):
+                return default
+            if type(value) in (int, float):
+                return value
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return default
+
         for group in filters.get("groups", []):
+            # variant must be a string or null (not boolean false from survey targeting)
             variant = group.get("variant")
             if variant is not None and not isinstance(variant, str):
                 group["variant"] = None
+
+            # rollout_percentage must be a number or null
+            group["rollout_percentage"] = _coerce_to_numeric(group.get("rollout_percentage"), default=None)
+
+            # group_type_index on property filters must be an integer or null
+            # Note: use type() instead of isinstance() because bool is a subclass of int.
+            for prop in group.get("properties", []):
+                gti = prop.get("group_type_index")
+                if gti is not None and type(gti) is not int:
+                    prop["group_type_index"] = None
+
+        # Multivariate variant rollout_percentage (default to 0 since the sum validation needs a number)
+        for variant in (filters.get("multivariate") or {}).get("variants", []):
+            variant["rollout_percentage"] = _coerce_to_numeric(variant.get("rollout_percentage"), default=0)
 
         def properties_all_match(predicate):
             return all(
