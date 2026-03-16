@@ -2,28 +2,7 @@ use crate::{api::errors::FlagError, router::State as AppState, team::team_models
 use axum::http::HeaderMap;
 use common_database::PostgresReader;
 use serde::{Deserialize, Serialize};
-use sqlx::{postgres::PgRow, Row};
 use tracing::{debug, warn};
-
-/// Extension trait for sqlx rows: try to decode a nullable column,
-/// logging a warning and returning `None` on deserialization failure.
-trait RowExt {
-    fn try_get_nullable<'r, T>(&'r self, col: &str) -> Option<T>
-    where
-        T: sqlx::Decode<'r, sqlx::Postgres> + sqlx::Type<sqlx::Postgres>;
-}
-
-impl RowExt for PgRow {
-    fn try_get_nullable<'r, T>(&'r self, col: &str) -> Option<T>
-    where
-        T: sqlx::Decode<'r, sqlx::Postgres> + sqlx::Type<sqlx::Postgres>,
-    {
-        self.try_get(col).unwrap_or_else(|e| {
-            warn!(column = col, error = %e, "Failed to deserialize column");
-            None
-        })
-    }
-}
 
 /// Token prefix constants
 const SECRET_TOKEN_PREFIX: &str = "phs_";
@@ -212,6 +191,8 @@ pub async fn validate_personal_api_key_with_scopes_for_team(
     key: &str,
     team: &Team,
 ) -> Result<String, FlagError> {
+    use sqlx::Row;
+
     debug!(team_id = team.id, "Validating personal API key for team");
 
     let sha256_hash = hash_token_value(key);
@@ -257,12 +238,10 @@ pub async fn validate_personal_api_key_with_scopes_for_team(
                 Some(row) => {
                     let key_id: String = row.get("key_id");
                     let user_id: i32 = row.get("user_id");
-                    let scoped_teams: Option<Vec<i32>> =
-                        row.try_get_nullable("scoped_teams");
+                    let scoped_teams: Option<Vec<i32>> = row.try_get("scoped_teams").ok();
                     let scoped_organizations: Option<Vec<String>> =
-                        row.try_get_nullable("scoped_organizations");
-                    let scopes: Option<Vec<String>> =
-                        row.try_get_nullable("scopes");
+                        row.try_get("scoped_organizations").ok();
+                    let scopes: Option<Vec<String>> = row.try_get("scopes").ok();
                     let org_ids: Vec<String> = row.try_get("org_ids").unwrap_or_default();
 
                     Ok::<_, FlagError>(Some(TokenAuthData::Personal {
@@ -285,13 +264,13 @@ pub async fn validate_personal_api_key_with_scopes_for_team(
     match &result.value {
         Some(data) => {
             validate_personal_key_metadata(data, team)?;
-            let TokenAuthData::Personal { key_id, .. } = data else {
-                return Err(FlagError::PersonalApiKeyInvalid);
+            let pak_id = match data {
+                TokenAuthData::Personal { key_id, .. } => key_id.clone().ok_or_else(|| {
+                    warn!("Cached personal API key missing key_id (stale cache entry)");
+                    FlagError::PersonalApiKeyInvalid
+                })?,
+                _ => return Err(FlagError::PersonalApiKeyInvalid),
             };
-            let pak_id = key_id.clone().ok_or_else(|| {
-                warn!("Cached personal API key missing key_id (stale cache entry)");
-                FlagError::PersonalApiKeyInvalid
-            })?;
             debug!(team_id = team.id, "Personal API key validated successfully");
             Ok(pak_id)
         }
