@@ -238,24 +238,10 @@ pub async fn validate_personal_api_key_with_scopes_for_team(
                 Some(row) => {
                     let key_id: String = row.get("key_id");
                     let user_id: i32 = row.get("user_id");
-                    let scoped_teams: Option<Vec<i32>> =
-                        row.try_get("scoped_teams").map_err(|e| {
-                            FlagError::DatabaseError(format!(
-                                "Failed to deserialize scoped_teams: {e}"
-                            ))
-                        })?;
+                    let scoped_teams: Option<Vec<i32>> = row.try_get("scoped_teams").ok();
                     let scoped_organizations: Option<Vec<String>> =
-                        row.try_get("scoped_organizations").map_err(|e| {
-                            FlagError::DatabaseError(format!(
-                                "Failed to deserialize scoped_organizations: {e}"
-                            ))
-                        })?;
-                    let scopes: Option<Vec<String>> =
-                        row.try_get("scopes").map_err(|e| {
-                            FlagError::DatabaseError(format!(
-                                "Failed to deserialize scopes: {e}"
-                            ))
-                        })?;
+                        row.try_get("scoped_organizations").ok();
+                    let scopes: Option<Vec<String>> = row.try_get("scopes").ok();
                     let org_ids: Vec<String> = row.try_get("org_ids").unwrap_or_default();
 
                     Ok::<_, FlagError>(Some(TokenAuthData::Personal {
@@ -648,6 +634,7 @@ mod tests {
 
         let data = TokenAuthData::Personal {
             user_id: 42,
+            key_id: None,
             org_ids: vec!["550e8400-e29b-41d4-a716-446655440000".to_string()],
             scoped_teams: None,
             scoped_orgs: None,
