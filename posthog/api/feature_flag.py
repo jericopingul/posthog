@@ -796,9 +796,17 @@ class FeatureFlagSerializer(
         # Coerce non-integer values (e.g. booleans or strings from malformed API calls) to None.
         # The Rust flag evaluation service expects this field to be an integer or null —
         # a non-integer here poisons the entire team's cache and causes 500s on every request.
+        # Note: use type() instead of isinstance() because bool is a subclass of int.
         if aggregation_group_type_index is not None and type(aggregation_group_type_index) is not int:
             filters["aggregation_group_type_index"] = None
             aggregation_group_type_index = None
+
+        # Coerce non-string variant values (e.g. boolean false from survey targeting flags) to None.
+        # The Rust flag evaluation service expects variant to be a string or null.
+        for group in filters.get("groups", []):
+            variant = group.get("variant")
+            if variant is not None and not isinstance(variant, str):
+                group["variant"] = None
 
         def properties_all_match(predicate):
             return all(

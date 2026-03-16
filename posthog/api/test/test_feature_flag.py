@@ -549,6 +549,73 @@ class TestFeatureFlag(APIBaseTest, ClickhouseTestMixin):
         flag.refresh_from_db()
         self.assertIsNone(flag.filters["aggregation_group_type_index"])
 
+    @parameterized.expand(
+        [
+            ("false", False),
+            ("true", True),
+            ("int", 42),
+        ]
+    )
+    def test_non_string_group_variant_coerced_to_null_on_create(self, _name, bad_value):
+        response = self.client.post(
+            f"/api/projects/{self.team.id}/feature_flags/",
+            data={
+                "name": "Coerce variant flag",
+                "key": f"coerce-variant-create-{_name}",
+                "filters": {
+                    "groups": [{"variant": bad_value, "rollout_percentage": 100}],
+                },
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        flag = FeatureFlag.objects.get(key=f"coerce-variant-create-{_name}", team=self.team)
+        self.assertIsNone(flag.filters["groups"][0]["variant"])
+
+    @parameterized.expand(
+        [
+            ("false", False),
+            ("true", True),
+            ("int", 42),
+        ]
+    )
+    def test_non_string_group_variant_coerced_to_null_on_update(self, _name, bad_value):
+        flag = FeatureFlag.objects.create(
+            team=self.team,
+            created_by=self.user,
+            key=f"coerce-variant-update-{_name}",
+            filters={"groups": [{"variant": None, "rollout_percentage": 100}]},
+        )
+        response = self.client.patch(
+            f"/api/projects/{self.team.id}/feature_flags/{flag.id}/",
+            data={
+                "filters": {
+                    "groups": [{"variant": bad_value, "rollout_percentage": 50}],
+                },
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        flag.refresh_from_db()
+        self.assertIsNone(flag.filters["groups"][0]["variant"])
+
+    def test_string_group_variant_preserved(self):
+        response = self.client.post(
+            f"/api/projects/{self.team.id}/feature_flags/",
+            data={
+                "name": "String variant flag",
+                "key": "string-variant-preserved",
+                "filters": {
+                    "groups": [{"variant": "control", "rollout_percentage": 100}],
+                    "multivariate": {"variants": [{"key": "control", "rollout_percentage": 100}]},
+                },
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        flag = FeatureFlag.objects.get(key="string-variant-preserved", team=self.team)
+        self.assertEqual(flag.filters["groups"][0]["variant"], "control")
+
     @freeze_time("2021-08-25T22:09:14.252Z")
     @patch("posthog.api.feature_flag.report_user_action")
     def test_create_feature_flag(self, mock_report_user_action):
