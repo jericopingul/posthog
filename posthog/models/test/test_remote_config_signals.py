@@ -267,12 +267,18 @@ class TestPersonalApiKeySavedSignalHandler(TestCase):
 
     @parameterized.expand(
         [
-            (["last_used_at"], False),
-            (["last_used_at", "secure_value"], True),
+            (["last_used_at"], False, "last_used_at only"),
+            (["label"], False, "label only"),
+            (["last_used_at", "label"], False, "last_used_at and label"),
+            (["last_used_at", "secure_value"], True, "last_used_at and secure_value"),
+            (["scopes"], True, "scopes only"),
+            (["scoped_teams"], True, "scoped_teams only"),
+            (["scoped_organizations"], True, "scoped_organizations only"),
+            (["label", "scopes"], True, "label and scopes"),
         ]
     )
     @patch("django.db.transaction.on_commit")
-    def test_update_fields_last_used_at_guard(self, update_fields, should_schedule, mock_on_commit):
+    def test_update_fields_cache_relevant_guard(self, update_fields, should_schedule, description, mock_on_commit):
         instance = MagicMock(secure_value="sha256$abc123", user_id=42)
         instance._old_secure_value = None
         personal_api_key_saved(sender=PersonalAPIKey, instance=instance, created=False, update_fields=update_fields)
@@ -290,10 +296,9 @@ class TestPersonalApiKeySavedSignalHandler(TestCase):
 
         mock_on_commit.assert_not_called()
 
-    @patch("posthog.models.remote_config.capture_exception")
     @patch("posthog.tasks.team_access_cache_tasks.invalidate_personal_api_key_cache_task")
     @patch("django.db.transaction.on_commit")
-    def test_captures_exception_on_task_failure(self, mock_on_commit, mock_task, mock_capture):
+    def test_task_failure_propagates(self, mock_on_commit, mock_task):
         mock_task.delay.side_effect = Exception("Redis down")
         instance = MagicMock(secure_value="sha256$abc123", user_id=42)
         instance._old_secure_value = None
@@ -301,9 +306,8 @@ class TestPersonalApiKeySavedSignalHandler(TestCase):
 
         mock_on_commit.assert_called_once()
         on_commit_callback = mock_on_commit.call_args[0][0]
-        on_commit_callback()  # should not raise
-
-        mock_capture.assert_called_once()
+        with self.assertRaises(Exception, msg="Redis down"):
+            on_commit_callback()
 
 
 class TestPersonalApiKeyDeletedSignalHandler(TestCase):

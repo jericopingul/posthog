@@ -606,14 +606,13 @@ def _schedule_pak_invalidation(secure_value: str, user_id: int) -> None:
     """Schedule a Celery task to invalidate a PAK's auth cache entry after commit."""
     from posthog.tasks.team_access_cache_tasks import invalidate_personal_api_key_cache_task
 
-    def _on_commit():
-        try:
-            invalidate_personal_api_key_cache_task.delay(secure_value, user_id)
-        except Exception as e:
-            capture_exception(e)
-            logger.exception("Failed to schedule PAK cache invalidation", user_id=user_id)
+    transaction.on_commit(lambda: invalidate_personal_api_key_cache_task.delay(secure_value, user_id))
 
-    transaction.on_commit(_on_commit)
+
+# PAK fields whose changes affect cached TokenAuthData and require cache invalidation.
+# secure_value: the token hash itself (cache key)
+# scopes, scoped_teams, scoped_organizations: cached in TokenAuthData::Personal
+_PAK_CACHE_RELEVANT_FIELDS = frozenset({"secure_value", "scopes", "scoped_teams", "scoped_organizations"})
 
 
 @receiver(post_save, sender=PersonalAPIKey)
@@ -621,16 +620,15 @@ def personal_api_key_saved(sender, instance: "PersonalAPIKey", created, **kwargs
     """
     Handle PersonalAPIKey save for per-token auth cache invalidation.
 
-    Skip cache updates for last_used_at field updates to avoid unnecessary
-    invalidation during authentication requests.
+    Skip cache updates for non-auth field updates (e.g. last_used_at, label)
+    to avoid unnecessary invalidation during authentication requests.
 
     When secure_value changes in-place (key rolling), we also invalidate the old
     hash — captured via pre_save — so the old token doesn't remain cached for
     up to the 30-day TTL.
     """
-    # Skip cache updates if only last_used_at is being updated
     update_fields = kwargs.get("update_fields")
-    if update_fields is not None and set(update_fields) == {"last_used_at"}:
+    if update_fields is not None and not _PAK_CACHE_RELEVANT_FIELDS.intersection(update_fields):
         return
 
     secure_value = instance.secure_value

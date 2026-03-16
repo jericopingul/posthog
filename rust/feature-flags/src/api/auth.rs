@@ -637,6 +637,30 @@ mod tests {
     }
 
     #[test]
+    fn test_validate_personal_key_metadata_allows_mixed_scopes_with_valid_one() {
+        let team = Team {
+            id: 1,
+            organization_id: Some(
+                uuid::Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap(),
+            ),
+            ..Default::default()
+        };
+
+        let data = TokenAuthData::Personal {
+            user_id: 42,
+            org_ids: vec!["550e8400-e29b-41d4-a716-446655440000".to_string()],
+            scoped_teams: None,
+            scoped_orgs: None,
+            scopes: Some(vec![
+                "session_recording:read".to_string(),
+                "feature_flag:read".to_string(),
+            ]),
+        };
+
+        assert!(validate_personal_key_metadata(&data, &team).is_ok());
+    }
+
+    #[test]
     fn test_validate_personal_key_metadata_empty_scoped_vecs_treated_as_unscoped() {
         // Some(vec![]) means "no restriction" for scoped_teams, scoped_orgs, and scopes —
         // same semantics as None. The SQL can return either representation.

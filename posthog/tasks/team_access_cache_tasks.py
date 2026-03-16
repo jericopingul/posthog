@@ -14,6 +14,20 @@ logger = structlog.get_logger(__name__)
 
 
 @shared_task(bind=True, max_retries=3)
+def invalidate_secret_token_cache_task(self: Task, token_hash: str) -> dict:
+    """Invalidate a single secret token's cache entry.
+
+    Triggered when a Team's secret_api_token or secret_api_token_backup changes.
+    """
+    try:
+        token_auth_cache.invalidate_token(token_hash)
+        return {"status": "success", "token_hash_prefix": token_hash[:12]}
+    except Exception as e:
+        logger.exception("Failed to invalidate secret token cache", token_hash_prefix=token_hash[:12])
+        raise self.retry(exc=e)
+
+
+@shared_task(bind=True, max_retries=3)
 def invalidate_personal_api_key_cache_task(self: Task, secure_value: str, user_id: int | None = None) -> dict:
     """
     Invalidate a single personal API key's cache entry.

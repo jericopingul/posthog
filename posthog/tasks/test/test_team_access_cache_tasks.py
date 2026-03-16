@@ -8,9 +8,27 @@ from django.test import TestCase
 
 from posthog.tasks.team_access_cache_tasks import (
     invalidate_personal_api_key_cache_task,
+    invalidate_secret_token_cache_task,
     invalidate_user_tokens_sync,
     invalidate_user_tokens_task,
 )
+
+
+class TestInvalidateSecretTokenCacheTask(TestCase):
+    @patch("posthog.tasks.team_access_cache_tasks.token_auth_cache")
+    def test_invalidate_secret_token_cache_task_success(self, mock_cache: MagicMock) -> None:
+        result = invalidate_secret_token_cache_task(token_hash="sha256$abc123")
+
+        mock_cache.invalidate_token.assert_called_once_with("sha256$abc123")
+        assert result["status"] == "success"
+        assert result["token_hash_prefix"] == "sha256$abc123"[:12]
+
+    @patch("posthog.tasks.team_access_cache_tasks.token_auth_cache")
+    def test_invalidate_secret_token_cache_task_failure_retries(self, mock_cache: MagicMock) -> None:
+        mock_cache.invalidate_token.side_effect = Exception("Redis connection failed")
+
+        with self.assertRaises(Exception):
+            invalidate_secret_token_cache_task(token_hash="sha256$abc123")
 
 
 class TestInvalidatePersonalApiKeyCacheTask(TestCase):
