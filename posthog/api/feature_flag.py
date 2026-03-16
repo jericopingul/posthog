@@ -793,6 +793,13 @@ class FeatureFlagSerializer(
 
         aggregation_group_type_index = filters.get("aggregation_group_type_index", None)
 
+        # Coerce non-integer values (e.g. booleans or strings from malformed API calls) to None.
+        # The Rust flag evaluation service expects this field to be an integer or null —
+        # a non-integer here poisons the entire team's cache and causes 500s on every request.
+        if aggregation_group_type_index is not None and type(aggregation_group_type_index) is not int:
+            filters["aggregation_group_type_index"] = None
+            aggregation_group_type_index = None
+
         def properties_all_match(predicate):
             return all(
                 predicate(Property(**property))

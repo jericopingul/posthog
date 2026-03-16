@@ -495,6 +495,60 @@ class TestFeatureFlag(APIBaseTest, ClickhouseTestMixin):
             request=ANY,
         )
 
+    @parameterized.expand(
+        [
+            ("false", False),
+            ("true", True),
+            ("string", "not_an_int"),
+            ("float", 1.5),
+        ]
+    )
+    def test_non_integer_aggregation_group_type_index_coerced_to_null_on_create(self, _name, bad_value):
+        response = self.client.post(
+            f"/api/projects/{self.team.id}/feature_flags/",
+            data={
+                "name": "Coerce group index flag",
+                "key": f"coerce-index-create-{_name}",
+                "filters": {
+                    "aggregation_group_type_index": bad_value,
+                    "groups": [{"rollout_percentage": 100}],
+                },
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        flag = FeatureFlag.objects.get(key=f"coerce-index-create-{_name}", team=self.team)
+        self.assertIsNone(flag.filters["aggregation_group_type_index"])
+
+    @parameterized.expand(
+        [
+            ("false", False),
+            ("true", True),
+            ("string", "not_an_int"),
+            ("float", 1.5),
+        ]
+    )
+    def test_non_integer_aggregation_group_type_index_coerced_to_null_on_update(self, _name, bad_value):
+        flag = FeatureFlag.objects.create(
+            team=self.team,
+            created_by=self.user,
+            key=f"coerce-index-update-{_name}",
+            filters={"groups": [{"rollout_percentage": 100}], "aggregation_group_type_index": None},
+        )
+        response = self.client.patch(
+            f"/api/projects/{self.team.id}/feature_flags/{flag.id}/",
+            data={
+                "filters": {
+                    "aggregation_group_type_index": bad_value,
+                    "groups": [{"rollout_percentage": 50}],
+                },
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        flag.refresh_from_db()
+        self.assertIsNone(flag.filters["aggregation_group_type_index"])
+
     @freeze_time("2021-08-25T22:09:14.252Z")
     @patch("posthog.api.feature_flag.report_user_action")
     def test_create_feature_flag(self, mock_report_user_action):
