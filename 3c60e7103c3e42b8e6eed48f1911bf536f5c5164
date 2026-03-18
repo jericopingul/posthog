@@ -1,0 +1,27 @@
+posthog/temporal/data_imports/sources/intercom/intercom.py
+  7447449dfe423bfb 9,53
+posthog/temporal/data_imports/sources/intercom/tests/test_intercom.py
+  7447449dfe423bfb 1-2,93,115-117
+posthog/temporal/data_imports/sources/intercom/tests/test_intercom_source.py
+  7447449dfe423bfb 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "3c60e7103c3e42b8e6eed48f1911bf536f5c5164",
+  "prompts": {
+    "7447449dfe423bfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5fc4c1f-4005-4275-924e-183c47adc296",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jerico Pingul <jerico.pingul@gmail.com>",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 6,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  }
+}
