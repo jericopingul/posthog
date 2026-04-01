@@ -1,0 +1,27 @@
+posthog/temporal/data_imports/sources/linkedin_ads/schemas.py
+  f91ac09028beb582 6,127,155
+posthog/temporal/data_imports/sources/linkedin_ads/tests/test_linkedin_ads.py
+  f91ac09028beb582 127,131,142
+products/marketing_analytics/backend/hogql_queries/test/linkedin_ads/campaign_group_stats.csv
+  f91ac09028beb582 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.23",
+  "base_commit_sha": "2debf4889af2fe3c6ea0f57a7b34772bed13524e",
+  "prompts": {
+    "f91ac09028beb582": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9e3e4ad-0a2c-4f11-967d-fd050231aaf8",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jerico Pingul <jerico.pingul@gmail.com>",
+      "messages": [],
+      "total_additions": 19,
+      "total_deletions": 16,
+      "accepted_lines": 19,
+      "overriden_lines": 0
+    }
+  }
+}
