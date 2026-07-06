@@ -1,0 +1,46 @@
+products/mcp_store/backend/migrations/0012_alter_mcpserverinstallation_auth_type_and_more.py
+  s_aa37178faad25e::t_c5b4873abe7c39 8,13-19,22-28
+  s_aa37178faad25e::t_2d41c2fe10cb2f 1-7,9-12,20-21,29-30
+products/mcp_store/backend/proxy.py
+  s_aa37178faad25e::t_c5b4873abe7c39 2
+  s_aa37178faad25e::t_8cf74bac7f8409 129-136
+  s_aa37178faad25e::t_17b66c79faac83 207-218
+products/mcp_store/backend/presentation/views.py
+  s_aa37178faad25e::t_6b0202615ac116 716-717
+  s_aa37178faad25e::t_c20fe02d266104 262,264-266
+  s_aa37178faad25e::t_381d8638066b77 781-826
+products/mcp_store/backend/models.py
+  s_aa37178faad25e::t_ed097fbc76baec 35-37
+  s_aa37178faad25e::t_21c09105101427 11
+products/mcp_store/backend/test/test_proxy.py
+  s_aa37178faad25e::t_c5b4873abe7c39 3
+  s_aa37178faad25e::t_6dd671d161a1be 116-139
+  s_aa37178faad25e::t_6f303083bf25de 523-544
+  s_aa37178faad25e::t_5b55bd6b6e631a 115
+products/mcp_store/backend/test/test_api.py
+  s_aa37178faad25e::t_5567e33ebec5f7 297-332
+products/mcp_store/backend/migrations/max_migration.txt
+  s_aa37178faad25e::t_2d41c2fe10cb2f 1
+products/mcp_store/frontend/generated/api.schemas.ts
+  s_aa37178faad25e::t_238d56bc3f79a1 13,20,121,129,150-151
+products/mcp_store/frontend/generated/api.zod.ts
+  s_aa37178faad25e::t_9666b810ea1365 20-23,35-38,56-59,78-81,90-91,101-103,105-106
+services/mcp/src/api/generated.ts
+  s_aa37178faad25e::t_9b4c564392492b 27675,27683,27705-27706,29338,29346
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "73354a33c36da62ccc9525e557672067fe7ca9e3",
+  "prompts": {},
+  "sessions": {
+    "s_aa37178faad25e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57ac0d8-9e58-4d52-b1d7-e5e26157b7a3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "jerico pingul <jerico.pingul@wayflyer.com>"
+    }
+  }
+}
