@@ -1,0 +1,19 @@
+products/mcp_store/backend/catalog.py
+  s_69ef3b49ddc16c::t_bfda28a133d9be 104-112,114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8e09d13b433e50f2733e0adb6e3cbbdb47c095e7",
+  "prompts": {},
+  "sessions": {
+    "s_69ef3b49ddc16c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c881d3d7-2d53-4d06-8613-132886629d46",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "jerico pingul <jerico.pingul@wayflyer.com>"
+    }
+  }
+}
