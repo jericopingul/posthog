@@ -25,6 +25,33 @@ CANONICAL_DESCRIPTIONS: CanonicalDescriptions = {
             "attributes": "Structured attributes parsed from the log.",
         },
     },
+    "error_tracking_issues": {
+        "description": (
+            "A deduplicated Error Tracking issue: one group of errors sharing the same root cause, "
+            "with the counts it accrued over the queried window."
+        ),
+        "docs_url": "https://docs.datadoghq.com/api/latest/error-tracking/#search-error-tracking-issues",
+        "columns": {
+            "id": "Unique identifier for the issue.",
+            "error_type": "Type of the error that matches the issue.",
+            "error_message": "Error message associated with the issue.",
+            "service": "Name of the service the issue was reported by.",
+            "file_path": "Path of the file where the issue occurred.",
+            "function_name": "Name of the function where the issue occurred.",
+            "state": "Triage state of the issue: OPEN, ACKNOWLEDGED, RESOLVED, IGNORED or EXCLUDED.",
+            "is_crash": "Whether the error is a crash.",
+            "languages": "Programming languages associated with the issue.",
+            "platform": "Platform the issue was reported from (e.g. BACKEND, BROWSER, IOS).",
+            "regression": "Resolved and reopened timestamps for an issue that regressed.",
+            "first_seen": "Time at which the error was first seen.",
+            "last_seen": "Time at which the error was last seen.",
+            "first_seen_version": "Application version where the issue was first observed.",
+            "last_seen_version": "Application version where the issue was last observed.",
+            "impacted_sessions": "Count of sessions impacted by the issue over the queried window.",
+            "impacted_users": "Count of users impacted by the issue over the queried window.",
+            "total_count": "Total count of errors matching the issue over the queried window.",
+        },
+    },
     "audit_logs": {
         "description": "An audit trail event recording a change or action in the Datadog account.",
         "docs_url": "https://docs.datadoghq.com/api/latest/audit/#search-audit-logs-events",

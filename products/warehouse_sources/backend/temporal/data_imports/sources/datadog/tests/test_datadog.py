@@ -15,9 +15,14 @@ from products.warehouse_sources.backend.temporal.data_imports.sources.datadog.da
     _build_initial_params,
     _build_initial_url,
     _compute_next_url,
+    _convert_epoch_ms_fields,
+    _epoch_ms_to_iso,
     _extract_items,
     _flatten_item,
     _format_datetime,
+    _index_included,
+    _prepare_items,
+    _to_epoch_ms,
     base_url,
     datadog_source,
     validate_credentials,
@@ -460,3 +465,242 @@ class TestFetchPageRetry:
         # DatadogRetryableError. Guards against widening the 408 fix to swallow all 4xx.
         with pytest.raises(requests.HTTPError):
             self._run([400])
+
+
+class TestEpochMsConversion:
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            (1671612804001, "2022-12-21T08:53:24.001Z"),
+            (0, "1970-01-01T00:00:00.000Z"),
+            # Already-converted or absent values pass through untouched.
+            ("2022-12-21T08:53:24.001Z", "2022-12-21T08:53:24.001Z"),
+            (None, None),
+            # A bool is an int in Python; converting one would invent a 1970 timestamp.
+            (True, True),
+        ],
+    )
+    def test_epoch_ms_to_iso(self, value: Any, expected: Any) -> None:
+        assert _epoch_ms_to_iso(value) == expected
+
+    def test_only_declared_fields_are_converted(self) -> None:
+        item = {"first_seen": 1671612804001, "total_count": 82, "id": "abc"}
+        assert _convert_epoch_ms_fields(item, ("first_seen", "last_seen")) == {
+            "first_seen": "2022-12-21T08:53:24.001Z",
+            "total_count": 82,
+            "id": "abc",
+        }
+
+
+class TestToEpochMs:
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            (datetime(2022, 12, 21, 8, 53, 24, 1000, tzinfo=UTC), 1671612804001),
+            (datetime(2022, 12, 21, 8, 53, 24, tzinfo=UTC), 1671612804000),
+            # Naive datetimes are read as UTC, matching _format_datetime.
+            (datetime(2022, 12, 21, 8, 53, 24), 1671612804000),
+            (date(2022, 12, 21), 1671580800000),
+            ("2022-12-21T08:53:24.001Z", 1671612804001),
+            ("2022-12-21T08:53:24+00:00", 1671612804000),
+            (1671612804001, 1671612804001),
+            ("not-a-timestamp", None),
+            (None, None),
+            (True, None),
+        ],
+    )
+    def test_to_epoch_ms(self, value: Any, expected: int | None) -> None:
+        assert _to_epoch_ms(value) == expected
+
+
+class TestIncludedJoin:
+    """The search endpoint splits an issue across `data` and `included`; the join is what makes
+    a row usable, and a silent miss would sync rows with only counts and no error detail."""
+
+    def _response(self) -> dict[str, Any]:
+        return {
+            "data": [
+                {
+                    "id": "issue-1",
+                    "type": "error_tracking_search_result",
+                    "attributes": {"impacted_users": 4, "total_count": 82},
+                    "relationships": {"issue": {"data": {"id": "issue-1", "type": "issue"}}},
+                }
+            ],
+            "included": [
+                {
+                    "id": "other-1",
+                    "type": "user",
+                    "attributes": {"email": "someone@example.com"},
+                },
+                {
+                    "id": "issue-1",
+                    "type": "issue",
+                    "attributes": {"error_type": "builtins.TypeError", "state": "OPEN"},
+                },
+            ],
+        }
+
+    def test_index_ignores_other_included_types(self) -> None:
+        index = _index_included(self._response(), "issue")
+        assert list(index) == ["issue-1"]
+
+    @pytest.mark.parametrize("response_json", [None, [], {}, {"included": "nope"}])
+    def test_index_tolerates_missing_included(self, response_json: Any) -> None:
+        assert _index_included(response_json, "issue") == {}
+
+    def test_prepare_items_joins_flattens_and_converts(self) -> None:
+        response = self._response()
+        response["included"][1]["attributes"]["first_seen"] = 1671612804001
+        config = DATADOG_ENDPOINTS["error_tracking_issues"]
+
+        [row] = _prepare_items(response, _extract_items(response, config), config)
+
+        assert row["id"] == "issue-1"
+        # Search-result counts survive the flatten.
+        assert row["total_count"] == 82
+        # Issue attributes arrive from the sideloaded half.
+        assert row["error_type"] == "builtins.TypeError"
+        assert row["state"] == "OPEN"
+        # Epoch millis become ISO so the column can serve as a datetime partition key.
+        assert row["first_seen"] == "2022-12-21T08:53:24.001Z"
+        # The relationship is fully consumed by the join, so it doesn't land as a nested column.
+        assert "relationships" not in row
+
+    def test_row_survives_a_missing_sideload(self) -> None:
+        # `?include=issue` not honored, or the issue dropped from `included` — the counts are still
+        # a valid row, so the join must not raise or drop it.
+        response = self._response()
+        response["included"] = []
+        config = DATADOG_ENDPOINTS["error_tracking_issues"]
+
+        [row] = _prepare_items(response, _extract_items(response, config), config)
+
+        assert row["id"] == "issue-1"
+        assert "error_type" not in row
+
+    def test_relationship_id_wins_over_the_result_id(self) -> None:
+        # The spec keeps the two identical, but the relationship is the documented path — follow it
+        # so a result keyed differently still resolves.
+        response = self._response()
+        response["data"][0]["relationships"]["issue"]["data"]["id"] = "issue-2"
+        response["included"].append({"id": "issue-2", "type": "issue", "attributes": {"state": "IGNORED"}})
+        config = DATADOG_ENDPOINTS["error_tracking_issues"]
+
+        [row] = _prepare_items(response, _extract_items(response, config), config)
+
+        assert row["state"] == "IGNORED"
+
+
+class TestWindowPagination:
+    """The endpoint caps a search at 100 issues and exposes no cursor, so correctness rests
+    entirely on how the from/to window is walked."""
+
+    ENDPOINT = "error_tracking_issues"
+
+    def _run(
+        self,
+        rows_per_slice: list[int],
+        *,
+        resume_from_ms: int | None = None,
+        now: datetime = datetime(2026, 3, 10, 12, 0, 0, tzinfo=UTC),
+    ) -> tuple[list[Any], list[dict[str, Any]], list[int | None]]:
+        manager = mock.MagicMock()
+        manager.can_resume.return_value = resume_from_ms is not None
+        manager.load_state.return_value = (
+            DatadogResumeConfig(window_from_ms=resume_from_ms) if resume_from_ms is not None else None
+        )
+        saved: list[int | None] = []
+        manager.save_state.side_effect = lambda state: saved.append(state.window_from_ms)
+
+        bodies: list[dict[str, Any]] = []
+
+        def fake_post(url: str, json: Any = None, timeout: Any = None) -> Any:
+            bodies.append({"url": url, **json["data"]["attributes"]})
+            count = rows_per_slice[min(len(bodies) - 1, len(rows_per_slice) - 1)]
+            resp = mock.MagicMock()
+            resp.status_code = 200
+            resp.ok = True
+            resp.json.return_value = {
+                "data": [
+                    {"id": f"i{n}", "type": "error_tracking_search_result", "attributes": {}} for n in range(count)
+                ]
+            }
+            return resp
+
+        with (
+            mock.patch.object(ddog, "make_tracked_session") as mock_session,
+            mock.patch.object(ddog, "datetime", wraps=datetime) as mock_datetime,
+        ):
+            mock_datetime.now.return_value = now
+            mock_session.return_value.post.side_effect = fake_post
+            rows = list(
+                ddog.get_rows(
+                    site="datadoghq.com",
+                    api_key="api",
+                    app_key="app",
+                    endpoint=self.ENDPOINT,
+                    logger=mock.MagicMock(),
+                    resumable_source_manager=manager,
+                )
+            )
+        return rows, bodies, saved
+
+    def test_walks_the_lookback_window_in_contiguous_slices(self) -> None:
+        _rows, bodies, saved = self._run([1])
+        config = DATADOG_ENDPOINTS[self.ENDPOINT]
+
+        assert len(bodies) == config.default_lookback_days
+        # `from` is inclusive and `to` exclusive, so each slice starts exactly where the last ended:
+        # no overlap to re-merge, no gap to lose issues in.
+        for previous, current in zip(bodies, bodies[1:]):
+            assert current["from"] == previous["to"]
+        # The walk ends at now, and every completed slice is checkpointed.
+        assert bodies[-1]["to"] == int(datetime(2026, 3, 10, 12, 0, 0, tzinfo=UTC).timestamp() * 1000)
+        assert saved == [body["to"] for body in bodies]
+
+    def test_static_attributes_ride_every_request(self) -> None:
+        _rows, bodies, _saved = self._run([1])
+        # The API rejects a search with neither `persona` nor `track`, and `query` is required.
+        assert bodies[0]["query"] == "*"
+        assert bodies[0]["persona"] == "ALL"
+        assert bodies[0]["url"].endswith("/api/v2/error-tracking/issues/search?include=issue")
+
+    def test_a_capped_slice_is_halved_and_retried(self) -> None:
+        config = DATADOG_ENDPOINTS[self.ENDPOINT]
+        # First slice comes back at the cap, the rest do not.
+        _rows, bodies, _saved = self._run([config.page_size, 1])
+
+        first_span = bodies[0]["to"] - bodies[0]["from"]
+        second_span = bodies[1]["to"] - bodies[1]["from"]
+        # Same start — the truncated slice is re-queried narrower, not skipped past.
+        assert bodies[1]["from"] == bodies[0]["from"]
+        assert second_span == first_span // 2
+
+    def test_a_slice_capped_at_the_floor_still_yields_and_advances(self) -> None:
+        config = DATADOG_ENDPOINTS[self.ENDPOINT]
+        # Every slice stays at the cap, so narrowing bottoms out at window_min_hours.
+        rows, bodies, _saved = self._run([config.page_size])
+        floor_ms = config.window_min_hours * 60 * 60 * 1000
+
+        spans = [body["to"] - body["from"] for body in bodies]
+        assert min(spans) == floor_ms
+        # The walk must still terminate and surface the rows it did get rather than looping.
+        assert bodies[-1]["to"] == int(datetime(2026, 3, 10, 12, 0, 0, tzinfo=UTC).timestamp() * 1000)
+        assert all(len(batch) == config.page_size for batch in rows)
+
+    def test_resumes_from_the_saved_window_cursor(self) -> None:
+        resume_ms = int(datetime(2026, 3, 9, 0, 0, 0, tzinfo=UTC).timestamp() * 1000)
+        _rows, bodies, _saved = self._run([1], resume_from_ms=resume_ms)
+
+        assert bodies[0]["from"] == resume_ms
+        # Resuming a day and a half out leaves only the remaining slices to walk.
+        assert len(bodies) == 2
+
+    def test_empty_slices_are_skipped_without_stopping_the_walk(self) -> None:
+        # Unlike the URL-walking endpoints, an empty response is a quiet time slice, not the end of
+        # the data — stopping there would drop everything after the first quiet day.
+        rows, bodies, _saved = self._run([0])
+
+        assert rows == []
+        assert len(bodies) == DATADOG_ENDPOINTS[self.ENDPOINT].default_lookback_days

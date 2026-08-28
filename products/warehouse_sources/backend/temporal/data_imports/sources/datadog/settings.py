@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from products.warehouse_sources.backend.types import IncrementalField, IncrementalFieldType
 
-PaginationStyle = Literal["cursor", "page", "offset", "none"]
+PaginationStyle = Literal["cursor", "page", "offset", "window", "none"]
 
 
 @dataclass
@@ -35,7 +35,26 @@ class DatadogEndpointConfig:
     # event-search endpoints default ``filter[from]`` to ``now-15m`` when it's omitted, so without
     # this the very first sync would only fetch the last 15 minutes. We seed ``filter[from]`` to
     # ``now - default_lookback_days`` instead; Datadog clamps it to the account's retention.
+    # ``window`` endpoints reuse it as the span the window walk covers each sync.
     default_lookback_days: Optional[int] = None
+    method: Literal["GET", "POST"] = "GET"
+    # JSON:API ``data.type`` for a POST request body (e.g. ``search_request``).
+    request_type: Optional[str] = None
+    # Attributes merged into every POST request body, alongside the per-request window bounds.
+    static_request_attributes: dict[str, Any] = field(default_factory=dict)
+    # Value for the ``include`` query param, which asks Datadog to sideload related resources
+    # into a top-level ``included`` array.
+    include_param: Optional[str] = None
+    # Sideloaded resource whose ``attributes`` are merged into each record. Doubles as the
+    # ``relationships`` key that names the record's related id, which the search endpoint keeps
+    # identical to the ``included`` entry's ``type``.
+    included_type: Optional[str] = None
+    # Response fields holding epoch-millisecond integers, converted to ISO 8601 on yield.
+    epoch_ms_fields: tuple[str, ...] = ()
+    # ``window`` pagination: span of the first time slice, and the floor a slice narrows to when
+    # it comes back capped at ``page_size``.
+    window_initial_hours: int = 24
+    window_min_hours: int = 1
 
     @property
     def supports_incremental(self) -> bool:
@@ -106,6 +125,35 @@ DATADOG_ENDPOINTS: dict[str, DatadogEndpointConfig] = {
         default_incremental_field="timestamp",
         timestamp_filter_param="filter[from]",
         sort_param="timestamp",
+        default_lookback_days=30,
+    ),
+    # --- Window-walked search (full refresh) ---
+    "error_tracking_issues": DatadogEndpointConfig(
+        name="error_tracking_issues",
+        path="/api/v2/error-tracking/issues/search",
+        data_path="data",
+        method="POST",
+        request_type="search_request",
+        # ``query: "*"`` matches every issue and ``persona: "ALL"`` spans browser, mobile and
+        # backend — the API rejects a search that sets neither ``persona`` nor ``track``. Both are
+        # fixed here rather than exposed as connect-form fields, so the synced table stays useful
+        # to every consumer instead of being locked to one persona.
+        static_request_attributes={"query": "*", "persona": "ALL", "order_by": "FIRST_SEEN"},
+        # The request schema has no limit/page/offset and the response carries neither ``meta`` nor
+        # ``links``; Datadog caps a search at 100 issues. Paging therefore walks the ``from``/``to``
+        # window instead of a server cursor.
+        pagination="window",
+        page_size=100,
+        include_param="issue",
+        included_type="issue",
+        flatten_attributes=True,
+        epoch_ms_fields=("first_seen", "last_seen"),
+        partition_key="first_seen",
+        # Full refresh, not incremental: ``from``/``to`` bound when an issue's *errors* happened,
+        # not when the issue was first seen. A long-standing issue that errors today comes back
+        # with a years-old ``first_seen``, so no server-side filter on ``first_seen`` exists and
+        # rows do not arrive ordered by it. Each sync re-walks the lookback window and merges on
+        # the issue id, which is also what keeps state and counts current as issues are triaged.
         default_lookback_days=30,
     ),
     # --- Full refresh ---

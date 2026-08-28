@@ -75,6 +75,7 @@ class DatadogSource(ResumableSource[DatadogSourceConfig, DatadogResumeConfig]):
 
 Create an API key and an application key in your [Datadog organization settings](https://app.datadoghq.com/organization-settings/api-keys). The application key should be granted read scopes for the data you want to sync, for example:
 - `dashboards_read`
+- `error_tracking_read`
 - `monitors_read`
 - `incident_read`
 - `slos_read`
