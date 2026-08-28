@@ -683,6 +683,25 @@ class SentryIssueSignalInput(SignalInputBase):
     extra: SentryIssueSignalExtra
 
 
+class DatadogIssueSignalExtra(SignalExtraBase):
+    service: str | None
+    state: str | None
+    is_crash: str | None
+    platform: str | None
+    languages: list
+    file_path: str | None
+    function_name: str | None
+    impacted_users: str | None
+    total_count: str | None
+    first_seen: str | None
+
+
+class DatadogIssueSignalInput(SignalInputBase):
+    source_type: Literal[SignalSourceType.ISSUE]
+    source_product: Literal[SignalSourceProduct.DATADOG]
+    extra: DatadogIssueSignalExtra
+
+
 class RollbarItemSignalExtra(SignalExtraBase):
     level: str | None
     status: str | None
@@ -1027,6 +1046,7 @@ SignalInput = Annotated[
     | GiteaIssueSignalInput
     | ShortcutStorySignalInput
     | SentryIssueSignalInput
+    | DatadogIssueSignalInput
     | RollbarItemSignalInput
     | BugsnagErrorSignalInput
     | HoneybadgerFaultSignalInput
@@ -1083,6 +1103,7 @@ SIGNAL_INPUT_VARIANTS: tuple[type[SignalInputBase], ...] = (
     GiteaIssueSignalInput,
     ShortcutStorySignalInput,
     SentryIssueSignalInput,
+    DatadogIssueSignalInput,
     RollbarItemSignalInput,
     BugsnagErrorSignalInput,
     HoneybadgerFaultSignalInput,

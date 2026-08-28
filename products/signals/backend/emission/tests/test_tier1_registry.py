@@ -19,6 +19,7 @@ TIER1_SOURCES = [
     (ExternalDataSourceType.GITEA, "issues", "gitea", "issue"),
     (ExternalDataSourceType.SHORTCUT, "stories", "shortcut", "issue"),
     (ExternalDataSourceType.SENTRY, "issues", "sentry", "issue"),
+    (ExternalDataSourceType.DATADOG, "error_tracking_issues", "datadog", "issue"),
     (ExternalDataSourceType.ROLLBAR, "items", "rollbar", "issue"),
     (ExternalDataSourceType.BUGSNAG, "errors", "bugsnag", "issue"),
     (ExternalDataSourceType.HONEYBADGER, "faults", "honeybadger", "issue"),

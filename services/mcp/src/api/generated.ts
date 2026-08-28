@@ -26681,6 +26681,19 @@ export namespace Schemas {
       Databricks: 'Databricks',
     } as const;
 
+    export interface DatadogIssueSignalExtra {
+      service: string | null;
+      state: string | null;
+      is_crash: string | null;
+      platform: string | null;
+      languages: unknown[];
+      file_path: string | null;
+      function_name: string | null;
+      impacted_users: string | null;
+      total_count: string | null;
+      first_seen: string | null;
+    }
+
     /**
      * * `datasets` - datasets
      * * `dataset_items` - dataset_items
@@ -56117,6 +56130,7 @@ export namespace Schemas {
      * * `gitea` - Gitea
      * * `shortcut` - Shortcut
      * * `sentry` - Sentry
+     * * `datadog` - Datadog
      * * `rollbar` - Rollbar
      * * `bugsnag` - Bugsnag
      * * `honeybadger` - Honeybadger
@@ -56171,6 +56185,7 @@ export namespace Schemas {
       Gitea: 'gitea',
       Shortcut: 'shortcut',
       Sentry: 'sentry',
+      Datadog: 'datadog',
       Rollbar: 'rollbar',
       Bugsnag: 'bugsnag',
       Honeybadger: 'honeybadger',
@@ -73771,6 +73786,7 @@ export namespace Schemas {
      * * `gitea` - gitea
      * * `shortcut` - shortcut
      * * `sentry` - sentry
+     * * `datadog` - datadog
      * * `rollbar` - rollbar
      * * `bugsnag` - bugsnag
      * * `honeybadger` - honeybadger
@@ -73825,6 +73841,7 @@ export namespace Schemas {
       Gitea: 'gitea',
       Shortcut: 'shortcut',
       Sentry: 'sentry',
+      Datadog: 'datadog',
       Rollbar: 'rollbar',
       Bugsnag: 'bugsnag',
       Honeybadger: 'honeybadger',
@@ -74024,7 +74041,7 @@ export namespace Schemas {
       createdDate: string | null;
     }
 
-    export type SignalExtra = SessionProblemSignalExtra | LlmEvalSignalExtra | LlmEvalReportSignalExtra | ZendeskTicketSignalExtra | GithubIssueSignalExtra | LinearIssueSignalExtra | JiraIssueSignalExtra | ConversationsTicketSignalExtra | ErrorTrackingSignalExtra | PgAnalyzeIssueSignalExtra | EndpointExecutionFailedSignalExtra | EndpointBreakdownLimitExceededSignalExtra | SignalsScoutSignalExtra | LogsAlertStateChangeSignalExtra | ReplayVisionScannerFindingSignalExtra | AnalyticsAnomalyInvestigationSignalExtra | HealthCheckSignalExtra | EngineeringAnalyticsCIFlakyCheckSignalExtra | EngineeringAnalyticsCIBrokenDefaultBranchSignalExtra | EngineeringAnalyticsCIDurationRegressionSignalExtra | FreshdeskTicketSignalExtra | FreshserviceTicketSignalExtra | FrontConversationSignalExtra | GorgiasTicketSignalExtra | KustomerConversationSignalExtra | DixaConversationSignalExtra | PlainThreadSignalExtra | GitlabIssueSignalExtra | GiteaIssueSignalExtra | ShortcutStorySignalExtra | SentryIssueSignalExtra | RollbarItemSignalExtra | BugsnagErrorSignalExtra | HoneybadgerFaultSignalExtra | RaygunErrorGroupSignalExtra | SnykScannerFindingSignalExtra | SonarqubeScannerFindingSignalExtra | SemgrepScannerFindingSignalExtra | Rapid7InsightvmScannerFindingSignalExtra | FeaturebaseFeedbackSignalExtra | FrillFeedbackSignalExtra | AhaFeedbackSignalExtra | UservoiceFeedbackSignalExtra | ProductboardFeedbackSignalExtra | CannyFeedbackSignalExtra | AsknicelyFeedbackSignalExtra | RetentlyFeedbackSignalExtra | AppfiguresReviewSignalExtra | AppfollowReviewSignalExtra | JudgemeReviewsReviewSignalExtra | IntercomTicketSignalExtra | HubspotTicketSignalExtra | GoogleSearchConsoleSearchOpportunitySignalExtra;
+    export type SignalExtra = SessionProblemSignalExtra | LlmEvalSignalExtra | LlmEvalReportSignalExtra | ZendeskTicketSignalExtra | GithubIssueSignalExtra | LinearIssueSignalExtra | JiraIssueSignalExtra | ConversationsTicketSignalExtra | ErrorTrackingSignalExtra | PgAnalyzeIssueSignalExtra | EndpointExecutionFailedSignalExtra | EndpointBreakdownLimitExceededSignalExtra | SignalsScoutSignalExtra | LogsAlertStateChangeSignalExtra | ReplayVisionScannerFindingSignalExtra | AnalyticsAnomalyInvestigationSignalExtra | HealthCheckSignalExtra | EngineeringAnalyticsCIFlakyCheckSignalExtra | EngineeringAnalyticsCIBrokenDefaultBranchSignalExtra | EngineeringAnalyticsCIDurationRegressionSignalExtra | FreshdeskTicketSignalExtra | FreshserviceTicketSignalExtra | FrontConversationSignalExtra | GorgiasTicketSignalExtra | KustomerConversationSignalExtra | DixaConversationSignalExtra | PlainThreadSignalExtra | GitlabIssueSignalExtra | GiteaIssueSignalExtra | ShortcutStorySignalExtra | SentryIssueSignalExtra | DatadogIssueSignalExtra | RollbarItemSignalExtra | BugsnagErrorSignalExtra | HoneybadgerFaultSignalExtra | RaygunErrorGroupSignalExtra | SnykScannerFindingSignalExtra | SonarqubeScannerFindingSignalExtra | SemgrepScannerFindingSignalExtra | Rapid7InsightvmScannerFindingSignalExtra | FeaturebaseFeedbackSignalExtra | FrillFeedbackSignalExtra | AhaFeedbackSignalExtra | UservoiceFeedbackSignalExtra | ProductboardFeedbackSignalExtra | CannyFeedbackSignalExtra | AsknicelyFeedbackSignalExtra | RetentlyFeedbackSignalExtra | AppfiguresReviewSignalExtra | AppfollowReviewSignalExtra | JudgemeReviewsReviewSignalExtra | IntercomTicketSignalExtra | HubspotTicketSignalExtra | GoogleSearchConsoleSearchOpportunitySignalExtra;
 
     export type SignalMatchMetadata = MatchedMetadata | NoMatchMetadata;
 
@@ -74061,6 +74078,7 @@ export namespace Schemas {
        * * `gitea` - gitea
        * * `shortcut` - shortcut
        * * `sentry` - sentry
+       * * `datadog` - datadog
        * * `rollbar` - rollbar
        * * `bugsnag` - bugsnag
        * * `honeybadger` - honeybadger

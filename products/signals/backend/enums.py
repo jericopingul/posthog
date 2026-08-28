@@ -46,6 +46,7 @@ class SignalSourceProduct(StrEnum):
     GITEA = "gitea"
     SHORTCUT = "shortcut"
     SENTRY = "sentry"
+    DATADOG = "datadog"
     ROLLBAR = "rollbar"
     BUGSNAG = "bugsnag"
     HONEYBADGER = "honeybadger"
@@ -136,6 +137,7 @@ SIGNAL_SOURCE_PRODUCT_LABELS: dict[SignalSourceProduct, str] = {
     SignalSourceProduct.GITEA: "Gitea",
     SignalSourceProduct.SHORTCUT: "Shortcut",
     SignalSourceProduct.SENTRY: "Sentry",
+    SignalSourceProduct.DATADOG: "Datadog",
     SignalSourceProduct.ROLLBAR: "Rollbar",
     SignalSourceProduct.BUGSNAG: "Bugsnag",
     SignalSourceProduct.HONEYBADGER: "Honeybadger",

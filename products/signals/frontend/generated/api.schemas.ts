@@ -648,6 +648,7 @@ export interface SignalReportRefundResponseApi {
  * * `gitea` - gitea
  * * `shortcut` - shortcut
  * * `sentry` - sentry
+ * * `datadog` - datadog
  * * `rollbar` - rollbar
  * * `bugsnag` - bugsnag
  * * `honeybadger` - honeybadger
@@ -701,6 +702,7 @@ export const SignalSourceProductApi = {
     Gitea: 'gitea',
     Shortcut: 'shortcut',
     Sentry: 'sentry',
+    Datadog: 'datadog',
     Rollbar: 'rollbar',
     Bugsnag: 'bugsnag',
     Honeybadger: 'honeybadger',
@@ -1185,6 +1187,19 @@ export interface SentryIssueSignalExtraApi {
     firstSeen: string | null
 }
 
+export interface DatadogIssueSignalExtraApi {
+    service: string | null
+    state: string | null
+    is_crash: string | null
+    platform: string | null
+    languages: unknown[]
+    file_path: string | null
+    function_name: string | null
+    impacted_users: string | null
+    total_count: string | null
+    first_seen: string | null
+}
+
 export interface RollbarItemSignalExtraApi {
     level: string | null
     status: string | null
@@ -1386,6 +1401,7 @@ export type SignalExtraApi =
     | GiteaIssueSignalExtraApi
     | ShortcutStorySignalExtraApi
     | SentryIssueSignalExtraApi
+    | DatadogIssueSignalExtraApi
     | RollbarItemSignalExtraApi
     | BugsnagErrorSignalExtraApi
     | HoneybadgerFaultSignalExtraApi
@@ -1473,6 +1489,7 @@ export interface SignalNodeApi {
      * * `gitea` - gitea
      * * `shortcut` - shortcut
      * * `sentry` - sentry
+     * * `datadog` - datadog
      * * `rollbar` - rollbar
      * * `bugsnag` - bugsnag
      * * `honeybadger` - honeybadger
@@ -3893,6 +3910,7 @@ export interface ForgetResponseApi {
  * * `gitea` - Gitea
  * * `shortcut` - Shortcut
  * * `sentry` - Sentry
+ * * `datadog` - Datadog
  * * `rollbar` - Rollbar
  * * `bugsnag` - Bugsnag
  * * `honeybadger` - Honeybadger
@@ -3946,6 +3964,7 @@ export const SignalSourceProductEnumApi = {
     Gitea: 'gitea',
     Shortcut: 'shortcut',
     Sentry: 'sentry',
+    Datadog: 'datadog',
     Rollbar: 'rollbar',
     Bugsnag: 'bugsnag',
     Honeybadger: 'honeybadger',
