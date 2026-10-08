@@ -21,6 +21,8 @@ INCREMENTAL_ENDPOINTS = {
     "usage_hourly": "timestamp",
     "usage_summary": "date",
     "usage_historical_cost": "date",
+    "error_spans": "start_timestamp",
+    "error_logs": "timestamp",
 }
 
 

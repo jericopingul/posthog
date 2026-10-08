@@ -105,6 +105,15 @@ class TestFlattenItem:
         item = {"id": "abc", "name": "x"}
         assert _flatten_item(item) == {"id": "abc", "name": "x"}
 
+    def test_keeps_a_nested_attributes_object_as_a_column(self) -> None:
+        item = {
+            "id": "e1",
+            "attributes": {"timestamp": "2026-01-01T00:00:00Z", "attributes": {"status": "error"}},
+        }
+        flat = _flatten_item(item)
+        assert flat["timestamp"] == "2026-01-01T00:00:00Z"
+        assert flat["attributes"] == {"status": "error"}
+
 
 class TestBuildInitialParams:
     @pytest.mark.parametrize(
@@ -116,6 +125,28 @@ class TestBuildInitialParams:
                 False,
                 None,
                 {"page[limit]": 1000, "sort": "timestamp"},
+                [],
+            ),
+            # Error-only tables: the error filter is applied by Datadog, never after the fetch.
+            (
+                "error_spans",
+                False,
+                None,
+                {"filter[query]": "status:error", "page[limit]": 1000, "sort": "timestamp"},
+                [],
+            ),
+            (
+                "error_logs",
+                False,
+                None,
+                {"filter[query]": "status:error", "page[limit]": 1000, "sort": "timestamp"},
+                [],
+            ),
+            (
+                "error_spans",
+                True,
+                datetime(2026, 1, 1, tzinfo=UTC),
+                {"filter[query]": "status:error", "filter[from]": "2026-01-01T00:00:00.000Z"},
                 [],
             ),
             # Cursor endpoint, incremental continuation: filter[from] is the stored watermark.
@@ -417,6 +448,19 @@ class TestDatadogSourceResponse:
         else:
             assert response.partition_mode is None
             assert response.partition_keys is None
+
+    def test_newest_first_endpoint_declares_a_descending_sort_mode(self) -> None:
+        # The pipeline checkpoints the highest cursor value from an ascending source, so a newest-first
+        # walk that is capped would skip rows if it claimed to be ascending.
+        response = datadog_source(
+            site="datadoghq.com",
+            api_key="api",
+            app_key="app",
+            endpoint="monitor_alerts",
+            logger=mock.MagicMock(),
+            resumable_source_manager=mock.MagicMock(),
+        )
+        assert response.sort_mode == "desc"
 
     def test_unknown_endpoint_is_named_in_the_error(self) -> None:
         with pytest.raises(UnknownResourceError, match="not_a_table"):

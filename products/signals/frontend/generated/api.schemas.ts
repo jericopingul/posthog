@@ -1585,6 +1585,7 @@ export interface SignalReportSuggestedReviewersArtefactApi {
  * * `bugsnag` - bugsnag
  * * `honeybadger` - honeybadger
  * * `raygun` - raygun
+ * * `datadog` - datadog
  * * `snyk` - snyk
  * * `sonarqube` - sonarqube
  * * `semgrep` - semgrep
@@ -1639,6 +1640,7 @@ export const SignalSourceProductApi = {
     Bugsnag: 'bugsnag',
     Honeybadger: 'honeybadger',
     Raygun: 'raygun',
+    Datadog: 'datadog',
     Snyk: 'snyk',
     Sonarqube: 'sonarqube',
     Semgrep: 'semgrep',
@@ -2162,6 +2164,40 @@ export interface RaygunErrorGroupSignalExtraApi {
     createdAt: string | null
 }
 
+export type DatadogSignalExtraKindEnumApi =
+    (typeof DatadogSignalExtraKindEnumApi)[keyof typeof DatadogSignalExtraKindEnumApi]
+
+export const DatadogSignalExtraKindEnumApi = {
+    Incident: 'incident',
+    ErrorTrackingIssue: 'error_tracking_issue',
+    ErrorSpan: 'error_span',
+    ErrorLog: 'error_log',
+    MonitorAlert: 'monitor_alert',
+} as const
+
+export interface DatadogSignalExtraApi {
+    kind: DatadogSignalExtraKindEnumApi
+    severity?: string | null
+    state?: string | null
+    created?: string | null
+    service?: string | null
+    platform?: string | null
+    file_path?: string | null
+    function_name?: string | null
+    error_type?: string | null
+    resource_name?: string | null
+    first_seen?: string | null
+    last_seen?: string | null
+    is_crash?: string | null
+    window_total_count?: string | null
+    window_impacted_users?: string | null
+    occurrences?: string | null
+    monitor_id?: string | null
+    monitor_type?: string | null
+    priority?: string | null
+    alert_url?: string | null
+}
+
 export interface SnykScannerFindingSignalExtraApi {
     effective_severity_level: string | null
     status: string | null
@@ -2336,6 +2372,7 @@ export type SignalExtraApi =
     | BugsnagErrorSignalExtraApi
     | HoneybadgerFaultSignalExtraApi
     | RaygunErrorGroupSignalExtraApi
+    | DatadogSignalExtraApi
     | SnykScannerFindingSignalExtraApi
     | SonarqubeScannerFindingSignalExtraApi
     | SemgrepScannerFindingSignalExtraApi
@@ -2424,6 +2461,7 @@ export interface SignalNodeApi {
      * * `bugsnag` - bugsnag
      * * `honeybadger` - honeybadger
      * * `raygun` - raygun
+     * * `datadog` - datadog
      * * `snyk` - snyk
      * * `sonarqube` - sonarqube
      * * `semgrep` - semgrep
@@ -7178,6 +7216,7 @@ export interface ScoutSuggestionRefreshApi {
  * * `bugsnag` - Bugsnag
  * * `honeybadger` - Honeybadger
  * * `raygun` - Raygun
+ * * `datadog` - Datadog
  * * `snyk` - Snyk
  * * `sonarqube` - SonarQube
  * * `semgrep` - Semgrep
@@ -7232,6 +7271,7 @@ export const SignalSourceProductEnumApi = {
     Bugsnag: 'bugsnag',
     Honeybadger: 'honeybadger',
     Raygun: 'raygun',
+    Datadog: 'datadog',
     Snyk: 'snyk',
     Sonarqube: 'sonarqube',
     Semgrep: 'semgrep',
